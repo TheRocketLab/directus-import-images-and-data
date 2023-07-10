@@ -12,6 +12,27 @@ const endpoint = process.env.DIRECTUS_API_ENDPOINT;
 // Replace this with the name of your collection
 const collection = 'blog_articles';
 
+const getFileName = (response) => {
+  const contentDispositionHeader = response.headers.get('Content-Disposition');
+  if (contentDispositionHeader) {
+    const fileNameMatch = contentDispositionHeader.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+    if (fileNameMatch && fileNameMatch[1]) {
+      const fileName = fileNameMatch[1].replace(/['"]/g, '');
+      console.log('File name:', fileName);
+      return fileName;
+    }
+  }
+}
+
+const getFileType = (response) => {
+  const contentTypeHeader = response.headers.get('Content-Type');
+  if (contentTypeHeader) {
+    const fileType = contentTypeHeader.split('/').pop();
+    console.log('File type:', fileType);
+    return fileType;
+  }
+}
+
 async function authenticate(username, password, endpoint) {
   const { default: fetch } = await import('node-fetch');
   const authUrl = `${endpoint}/auth/login`;
@@ -43,7 +64,9 @@ async function uploadImageFromUrl(token, endpoint, slug, imageUrl) {
 
   // Create form data with the image blob
   const formData = new FormData();
-  formData.append('file', imageBuffer, { filename: slug + '.jpg' });
+  const fileType = getFileType(imageResponse);
+  const fileName = getFileName(imageResponse) || slug + '.' + fileType;
+  formData.append('file', imageBuffer, { filename: fileName });
 
   // Upload the image to Directus
   const response = await fetch(uploadUrl, {
@@ -55,7 +78,6 @@ async function uploadImageFromUrl(token, endpoint, slug, imageUrl) {
   });
 
   const responseJson = await response.json();
-  console.log('responseJson', responseJson)
   if (responseJson.data) {
     const fileId = responseJson.data.id;
 
@@ -89,7 +111,7 @@ async function uploadJsonData(token, endpoint, collection, jsonData) {
   try {
     // Authenticate and get the access token
     const token = await authenticate(username, password, endpoint);
-
+    // Loop through the JSON data
     jsonData.map(async (item) => {
       // Upload the image to Directus
       const imageId = await uploadImageFromUrl(token, endpoint, item.slug, item.feature_image);
