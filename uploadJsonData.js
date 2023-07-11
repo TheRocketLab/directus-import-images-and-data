@@ -36,21 +36,26 @@ const getFileType = (response) => {
 async function authenticate(username, password, endpoint) {
   const { default: fetch } = await import('node-fetch');
   const authUrl = `${endpoint}/auth/login`;
-  const response = await fetch(authUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      email: username,
-      password: password
-    })
-  });
-  const responseJson = await response.json();
-  if (responseJson.data) {
-    return responseJson.data.access_token;
-  } else {
-    throw new Error(`Authentication failed: ${responseJson.toString()}`);
+  try {
+    const response = await fetch(authUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: username,
+        password: password
+      })
+    });
+    const responseJson = await response.json();
+    if (response.ok) {
+      return responseJson.data.access_token;
+    } else {
+      throw new Error(`Authentication failed: ${responseJson.toString()}`);
+    }
+
+  } catch (error) {
+    console.error(`Fetch Auth error: ${error.message}`);
   }
 }
 
@@ -68,42 +73,50 @@ async function uploadImageFromUrl(token, endpoint, slug, imageUrl) {
   const fileName = getFileName(imageResponse) || slug + '.' + fileType;
   formData.append('file', imageBuffer, { filename: fileName });
 
-  // Upload the image to Directus
-  const response = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
-    body: formData
-  });
-
-  const responseJson = await response.json();
-  if (responseJson.data) {
-    const fileId = responseJson.data.id;
-
-    return fileId;
-
-  } else {
-    throw new Error(`Upload failed: ${responseJson.error.message}`);
+  try {
+    // Upload the image to Directus
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+  
+    const responseJson = await response.json();
+    if (response.ok) {
+      const fileId = responseJson.data.id;
+  
+      return fileId;
+  
+    } else {
+      throw new Error(`Upload image failed: ${responseJson.error.message}`);
+    }
+  } catch (error) {
+    console.error(`Fetch Image error: ${error.message}`);
   }
 }
 
 async function uploadJsonData(token, endpoint, collection, jsonData) {
   const { default: fetch } = await import('node-fetch');
   const uploadUrl = `${endpoint}/items/${collection}`;
-  const response = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(jsonData)
-  });
-  const responseJson = await response.json();
-  if (responseJson.data) {
-    return responseJson.data;
-  } else {
-    throw new Error(`Upload failed: ${responseJson.error.message}`);
+  try {
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(jsonData)
+    });
+    const responseJson = await response.json();
+    if (response.ok) {
+      return responseJson.data;
+    } else {
+      throw new Error(`Upload json failed: ${responseJson.error.message}`);
+    }
+  } catch (error) {
+    console.error(`Fetch JSON error: ${error.message}`);
   }
 }
 
